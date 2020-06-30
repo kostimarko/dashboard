@@ -1,6 +1,5 @@
 import React from "react";
 import Panel from "muicss/lib/react/panel";
-import Button from "muicss/lib/react/button";
 import { EventEmitter } from "fbemitter";
 import axios from "axios";
 import moment from "moment";
@@ -9,22 +8,21 @@ import { Server } from "stellar-sdk";
 import AppBar from "./AppBar";
 import AccountBalance from "./AccountBalance";
 import FeeStats from "./FeeStats";
-import DistributionProgress from "./DistributionProgress";
 import NetworkStatus from "./NetworkStatus";
-import Nodes from "./Nodes";
 import Incidents from "./Incidents";
 import LedgerCloseChart from "./LedgerCloseChart";
-import ListAccounts from "./ListAccounts";
-import LumensAvailable from "./LumensAvailable";
-import LumensDistributed from "./LumensDistributed";
+import LumensCirculating from "./LumensCirculating";
+import LumensNonCirculating from "./LumensNonCirculating";
 import PublicNetworkLedgersHistoryChart from "./PublicNetworkLedgersHistoryChart";
 import RecentOperations from "./RecentOperations";
 import TotalCoins from "./TotalCoins";
 import TransactionsChart from "./TransactionsChart";
 import FailedTransactionsChart from "./FailedTransactionsChart";
 import { LIVE_NEW_LEDGER, TEST_NEW_LEDGER } from "../events";
+import { setTimeOffset } from "../common/time";
+import { ScheduledMaintenance } from "./ScheduledMaintenance";
 
-const horizonLive = "https://horizon-mon.stellar-ops.com";
+const horizonLive = "https://horizon.stellar.org";
 const horizonTest = "https://horizon-testnet.stellar.org";
 
 export default class App extends React.Component {
@@ -33,6 +31,24 @@ export default class App extends React.Component {
     this.chrome57 = navigator.userAgent.toLowerCase().indexOf("chrome/57") > -1;
     this.emitter = new EventEmitter();
     this.sleepDetector();
+
+    // Add an axios response interceptor to setup a timestamp offset between
+    // local time and horizon time if a date header is present
+    // this will be used to settle clock discrepancies
+    axios.interceptors.response.use(
+      function(response) {
+        let headerDate = response.headers.date;
+        if (headerDate) {
+          setTimeOffset(
+            Math.round((new Date() - new Date(response.headers.date)) / 1000),
+          );
+        }
+        return response;
+      },
+      function(error) {
+        return Promise.reject(error);
+      },
+    );
 
     // forceTheme is our way to celebrate May, 4th.
     var forceTheme = false;
@@ -50,6 +66,11 @@ export default class App extends React.Component {
 
     // TLJ
     if (d == 9 && m == 12 && y == 2017) {
+      forceTheme = true;
+    }
+
+    // TRS
+    if (d == 20 && m == 12 && y == 2019) {
       forceTheme = true;
     }
 
@@ -144,11 +165,7 @@ export default class App extends React.Component {
               return (
                 <Panel key={m.id} className="mui--bg-accent">
                   <div className="mui--text-subhead mui--text-light">
-                    <a
-                      href={
-                        "https://stellarorg.statuspage.io/incidents/" + m.id
-                      }
-                    >
+                    <a href={"https://status.stellar.org/incidents/" + m.id}>
                       <strong>{m.name}</strong>
                     </a>{" "}
                     (started: {moment(m.started_at).fromNow()}
@@ -175,47 +192,11 @@ export default class App extends React.Component {
           : null}
 
         {/* Scheduled maintenances */
-        this.state.statusPage
-          ? this.state.statusPage.scheduled_maintenances.map((m) => {
-              return (
-                <Panel key={m.id} className="mui--bg-accent-light">
-                  <div className="mui--text-subhead mui--text-light">
-                    Scheduled Maintenance:{" "}
-                    <a
-                      href={
-                        "https://stellarorg.statuspage.io/incidents/" + m.id
-                      }
-                    >
-                      <strong>{m.name}</strong>
-                    </a>{" "}
-                    at{" "}
-                    {moment(m.scheduled_for)
-                      .utc()
-                      .format("dddd, MMMM Do YYYY, h:mma")}{" "}
-                    UTC (
-                    {moment(m.scheduled_for).format(
-                      moment(m.scheduled_for)
-                        .utc()
-                        .format("dddd") ===
-                        moment(m.scheduled_for).format("dddd")
-                        ? "h:mma"
-                        : "MMMM Do YYYY, h:mma",
-                    )}{" "}
-                    local time)
-                    <br />
-                    {m.incident_updates.length > 0 ? (
-                      <span
-                        dangerouslySetInnerHTML={{
-                          __html: m.incident_updates[0].body,
-                        }}
-                      />
-                    ) : null}
-                    <br />
-                  </div>
-                </Panel>
-              );
-            })
-          : null}
+        this.state.statusPage ? (
+          <ScheduledMaintenance
+            scheduledMaintenances={this.state.statusPage.scheduled_maintenances}
+          />
+        ) : null}
 
         {this.chrome57 ? (
           <Panel>
@@ -296,38 +277,37 @@ export default class App extends React.Component {
           </section>
 
           <section>
-            <h1>Lumen distribution</h1>
-
+            <h1>LUMEN SUPPLY</h1>
             <div className="mui-col-md-4">
-              <DistributionProgress horizonLiveURL={horizonLive} />
+              <TotalCoins />
             </div>
 
             <div className="mui-col-md-4">
-              <TotalCoins horizonURL={horizonLive} />
+              <LumensNonCirculating />
             </div>
 
             <div className="mui-col-md-4">
-              <LumensAvailable />
+              <LumensCirculating />
             </div>
-
-            <div className="mui-col-md-4">
-              <LumensDistributed />
-            </div>
+            <h2>
+              <a
+                href="https://www.stellar.org/developers/guides/lumen-supply-metrics.html"
+                target="_blank"
+              >
+                Lumen Supply Metrics
+              </a>
+            </h2>
           </section>
 
           <section>
-            <h1>Featured live network nodes</h1>
+            <h1>Network Nodes</h1>
             <h2>
-              None of the following validators are recommended by Stellar
-              Development Foundation. We don't know who really controls
-              unverified nodes.
+              View network nodes on Stellarbeat and visualize consensus.
               <br />
-              These are <u>not</u> the only nodes in the Stellar network.
-              Everyone can run a validating node.
-              <br />
-              This list is purely for informational purposes.
+              <a href="https://stellarbeat.io" target="_blank">
+                Explore Nodes
+              </a>
             </h2>
-            <Nodes />
           </section>
 
           <section>

@@ -8,25 +8,30 @@ export const handler = function(req, res) {
 
 function updateApiLumens() {
   Promise.all([
-    commonLumens.totalCoins("https://horizon.stellar.org"),
-    commonLumens.availableCoins(),
-    commonLumens.distributionAll(),
-    commonLumens.distributionDirectSignup(),
-    commonLumens.distributionBitcoinProgram(),
-    commonLumens.distributionPartnershipProgram(),
-    commonLumens.distributionBuildChallenge(),
+    commonLumens.totalSupply(),
+    commonLumens.circulatingSupply(),
+    commonLumens.directDevelopmentAll(),
+    commonLumens.distributionEcosystemSupport(),
+    commonLumens.distributionUseCaseInvestment(),
+    commonLumens.distributionUserAcquisition(),
   ])
-    .then(function(data) {
+    .then(function([
+      totalCoins,
+      availableCoins,
+      directDevelopment,
+      ecosystemSupport,
+      useCaseInvestment,
+      userAcquisition,
+    ]) {
       var response = {
         updatedAt: new Date(),
-        totalCoins: data[0],
-        availableCoins: data[1],
-        distributedCoins: data[2],
+        totalCoins,
+        availableCoins,
         programs: {
-          directProgram: data[3],
-          bitcoinProgram: data[4],
-          partnershipProgram: data[5],
-          buildChallenge: data[6],
+          directDevelopment,
+          ecosystemSupport,
+          useCaseInvestment,
+          userAcquisition,
         },
       };
 

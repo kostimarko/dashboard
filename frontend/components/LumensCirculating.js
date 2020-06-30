@@ -1,9 +1,10 @@
 import React from "react";
 import AmountWidget from "./AmountWidget";
+import BigNumber from "bignumber.js";
 import Panel from "muicss/lib/react/panel";
-import { availableCoins } from "../../common/lumens.js";
+import { circulatingSupply } from "../../common/lumens.js";
 
-export default class LumensAvailable extends AmountWidget {
+export default class LumensCirculating extends AmountWidget {
   constructor(props) {
     super(props);
   }
@@ -18,16 +19,20 @@ export default class LumensAvailable extends AmountWidget {
   }
 
   updateAmount() {
-    availableCoins().then((amount) => {
-      this.setState({ amount, code: "XLM", loading: false });
+    circulatingSupply().then((amount) => {
+      this.setState({
+        amount: amount,
+        code: "XLM",
+        loading: false,
+      });
     });
   }
 
   renderName() {
     return (
       <div>
-        <span>Lumens Available (not held by SDF)</span>
-        <a href="/api/lumens" target="_blank" className="api-link">
+        <span>Circulating Supply</span>
+        <a href="/api/v2/lumens/" target="_blank" className="api-link">
           API
         </a>
       </div>
